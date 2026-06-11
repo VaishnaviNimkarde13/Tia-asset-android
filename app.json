@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Nurse Login Scan",
+    "slug": "nurse-login-scan-app",
+    "version": "1.0.0",
+    "platforms": ["ios", "android", "web"],
+    "scheme": "nurse-login-scan-app",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan barcodes."
+        }
+      ]
+    ],
+
+    "android": {
+      "package": "com.vridhi1.nurseloginscanapp"
+      
+    },
+
+    "extra": {
+      "eas": {
+        "projectId": "22270ee4-38fb-497d-928b-31bf0564d618"
+      }
+    }
+  }
+}
