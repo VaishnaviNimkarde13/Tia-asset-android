@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { validUser } from '../constants/auth';
+import { validUser, validGRNUser } from '../constants/auth';
 import { styles } from '../constants/styles';
 
 export function LoginScreen({ navigation }) {
@@ -21,6 +21,11 @@ export function LoginScreen({ navigation }) {
       navigation.replace('Dashboard', { user: username.trim() });
       return;
     }
+    if (username.trim() === validGRNUser.username && password === validGRNUser.password) {
+      setError('');
+      navigation.replace('GRNDashboard');
+      return;
+    }
     setError('Invalid username or password.');
   };
 
@@ -30,13 +35,13 @@ export function LoginScreen({ navigation }) {
       <View style={styles.loginCard}>
         <Text style={styles.brandText}>Tia-Asset</Text>
         <Text style={styles.cardTitle}>Welcome Back</Text>
-        <Text style={styles.cardSubtitle}>Sign in to continue to the nurse portal.</Text>
+        <Text style={styles.cardSubtitle}>Sign in to continue to the portal.</Text>
         <Text style={styles.label}>Username</Text>
         <TextInput
           value={username}
           onChangeText={setUsername}
           style={styles.input}
-          placeholder="nurse"
+          placeholder="Enter username"
           placeholderTextColor="#94a3b8"
           autoCapitalize="none"
           autoCorrect={false}
@@ -46,7 +51,7 @@ export function LoginScreen({ navigation }) {
           value={password}
           onChangeText={setPassword}
           style={styles.input}
-          placeholder="••••"
+          placeholder="Enter password"
           placeholderTextColor="#94a3b8"
           secureTextEntry
         />
@@ -55,7 +60,9 @@ export function LoginScreen({ navigation }) {
           <Text style={styles.primaryButtonText}>Sign In</Text>
         </TouchableOpacity>
         <View style={styles.hintBox}>
-          <Text style={styles.hintText}>Demo — username: nurse · password: 1234</Text>
+          <Text style={styles.hintText}>Demo - username: nurse · password: 1234
+            Demo - username: grn · password: 4321
+          </Text>
         </View>
       </View>
     </SafeAreaView>
