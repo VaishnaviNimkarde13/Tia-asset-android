@@ -14,7 +14,13 @@ export function RootNavigator({ consumedItems, addConsumedItem, grnList, addGRN 
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Dashboard">
-        {(props) => <DashboardScreen {...props} consumedItems={consumedItems} />}
+        {(props) => (
+          <DashboardScreen
+            {...props}
+            consumedItems={consumedItems}
+            onMarkConsumed={addConsumedItem}
+          />
+        )}
       </Stack.Screen>
       <Stack.Screen name="Scanner">
         {(props) => <ScannerScreen {...props} onMarkConsumed={addConsumedItem} />}
