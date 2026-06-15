@@ -24,8 +24,19 @@ export function DashboardScreen({ navigation, route, consumedItems, onMarkConsum
         <View>
           <Text style={styles.dashGreeting}>Welcome back, {user}!</Text>
         </View>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+
+        {/* Avatar + Logout grouped on the right */}
+        <View style={dash.headerRight}>
+          <TouchableOpacity
+            style={dash.logoutBtn}
+            onPress={() => navigation.replace('Login')}
+            activeOpacity={0.8}
+          >
+            <Text style={dash.logoutText}>⎋ Logout</Text>
+          </TouchableOpacity>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
         </View>
       </View>
 
@@ -137,6 +148,22 @@ const dash = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  logoutBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: '#fee2e2',
+    borderRadius: 8,
+  },
+  logoutText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#dc2626',
   },
   userName: {
     fontSize: 18,
