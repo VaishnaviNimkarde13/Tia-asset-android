@@ -1,19 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  Animated,
+  Pressable,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { styles } from '../constants/styles';
 import { ItemListScreen } from './ItemListScreen';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.72;
+
 export function DashboardScreen({ navigation, route, consumedItems, onMarkConsumed }) {
   const [activeTab, setActiveTab] = useState('activity');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
+
   const user     = route.params?.user || 'Nurse';
   const initials = user.charAt(0).toUpperCase();
+
+  const openDrawer = () => {
+    setDrawerOpen(true);
+    Animated.spring(drawerAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  };
+
+  const closeDrawer = () => {
+    Animated.timing(drawerAnim, {
+      toValue: DRAWER_WIDTH,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => setDrawerOpen(false));
+  };
+
+  const handleLogout = () => {
+    closeDrawer();
+    setTimeout(() => {
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: () => navigation.replace('Login'),
+          },
+        ]
+      );
+    }, 300);
+  };
 
   return (
     <View style={styles.screenWrapper}>
@@ -21,23 +68,20 @@ export function DashboardScreen({ navigation, route, consumedItems, onMarkConsum
 
       {/* Header */}
       <View style={dash.topBar}>
-        <View>
-          <Text style={styles.dashGreeting}>Welcome back, {user}!</Text>
+        {/* Avatar on left */}
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
 
-        {/* Avatar + Logout grouped on the right */}
-        <View style={dash.headerRight}>
-          <TouchableOpacity
-            style={dash.logoutBtn}
-            onPress={() => navigation.replace('Login')}
-            activeOpacity={0.8}
-          >
-            <Text style={dash.logoutText}>⎋ Logout</Text>
-          </TouchableOpacity>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+        {/* Name only, no subtitle */}
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={dash.userName}>Welcome back, {user}!</Text>
         </View>
+
+        {/* Logout icon on right */}
+        <TouchableOpacity style={dash.logoutIconBtn} onPress={handleLogout} activeOpacity={0.75}>
+          <Ionicons name="log-out-outline" size={22} color="#2563eb" />
+        </TouchableOpacity>
       </View>
 
       {/* Tab Switcher */}
@@ -47,15 +91,28 @@ export function DashboardScreen({ navigation, route, consumedItems, onMarkConsum
           onPress={() => setActiveTab('activity')}
           activeOpacity={0.8}
         >
+          <Ionicons
+            name="pulse-outline"
+            size={14}
+            color={activeTab === 'activity' ? '#1e293b' : '#94a3b8'}
+            style={{ marginRight: 4 }}
+          />
           <Text style={[dash.tabText, activeTab === 'activity' && dash.tabTextActive]}>
             Activity
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[dash.tab, activeTab === 'items' && dash.tabActive]}
           onPress={() => setActiveTab('items')}
           activeOpacity={0.8}
         >
+          <Ionicons
+            name="list-outline"
+            size={14}
+            color={activeTab === 'items' ? '#1e293b' : '#94a3b8'}
+            style={{ marginRight: 4 }}
+          />
           <Text style={[dash.tabText, activeTab === 'items' && dash.tabTextActive]}>
             Item List
           </Text>
@@ -143,34 +200,28 @@ function ActivityTab({ navigation, consumedItems }) {
 const dash = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logoutBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: '#fee2e2',
-    borderRadius: 8,
-  },
-  logoutText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#dc2626',
-  },
   userName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#0f172a',
-    marginTop: 2,
   },
+
+  // Logout icon button
+  logoutIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Tabs
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 20,
@@ -184,6 +235,8 @@ const dash = StyleSheet.create({
     paddingVertical: 9,
     alignItems: 'center',
     borderRadius: 9,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   tabActive: {
     backgroundColor: '#fff',
