@@ -23,7 +23,8 @@
     "react-native-screens": "~3.22.0",
     "expo-barcode-scanner": "~12.5.3",
     "expo-splash-screen": "~0.20.5",
-    "expo-system-ui": "~2.4.0"
+    "expo-system-ui": "~2.4.0",
+    "expo-updates": "~0.18.19"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0"

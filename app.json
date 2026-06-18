@@ -4,10 +4,23 @@
     "slug": "nurse-login-scan-app",
     "owner": "vridhi1",
     "version": "1.0.0",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "scheme": "nurse-login-scan-app",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.vridhi1.nurseloginscanapp",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to scan barcodes.",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
     "plugins": [
       [
         "expo-barcode-scanner",
@@ -17,12 +30,22 @@
       ]
     ],
     "android": {
-      "package": "com.vridhi1.nurseloginscanapp"
+      "package": "com.vridhi1.nurseloginscanapp",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.CAMERA"
+      ]
     },
     "extra": {
       "eas": {
         "projectId": "22270ee4-38fb-497d-928b-31bf0564d618"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/22270ee4-38fb-497d-928b-31bf0564d618"
     }
   }
 }
