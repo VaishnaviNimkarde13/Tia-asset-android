@@ -12,7 +12,90 @@ import {
   Platform,
 } from "react-native";
 
-// ← Moved OUTSIDE so it never re-creates on re-render
+import { PO_LIST } from "../data/poData";
+
+const SUPPLIER_LIST = [
+  "MedSupply Co.",
+  "PharmaDist Ltd.",
+  "HealthCare Supplies",
+  "Cardinal Health",
+  "McKesson Medical",
+];
+
+const LOCATION_LIST = [
+  "Main Acute Care Hospital",
+  "Central Warehouse & Stores",
+  "Ambulatory Surgery Center",
+  "Urgent Care Center",
+  "Women's & Children's Hospital",
+  "Core Laboratory",
+];
+
+// ── Reusable Dropdown ────────────────────────────────────────
+const AppDropdown = ({
+  label,
+  required,
+  icon,
+  value,
+  onSelect,
+  options,
+  placeholder,
+  zIndex = 100,
+}) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View style={[styles.fieldContainer, { zIndex }]}>
+      <Text style={styles.label}>
+        <Text style={styles.labelIcon}>{icon}</Text> {label}{" "}
+        {required && <Text style={styles.requiredStar}>*</Text>}
+      </Text>
+
+      <TouchableOpacity
+        style={styles.dropdownTrigger}
+        onPress={() => setOpen(!open)}
+        activeOpacity={0.8}
+      >
+        <Text style={value ? styles.dropdownValue : styles.dropdownPlaceholder}>
+          {value || placeholder}
+        </Text>
+        <Text style={styles.dropdownArrow}>{open ? "▲" : "▼"}</Text>
+      </TouchableOpacity>
+
+      {open && (
+        <View style={styles.floatList}>
+          {options.map((opt, idx) => {
+            const id = typeof opt === "object" ? opt.id : opt;
+            const sub =
+              typeof opt === "object" && opt.items
+                ? `${opt.supplier} · ${opt.items.length} item${opt.items.length !== 1 ? "s" : ""}`
+                : null;
+            const isActive = value === id;
+
+            return (
+              <TouchableOpacity
+                key={id || idx}
+                style={[
+                  styles.dropdownItem,
+                  isActive && styles.dropdownItemActive,
+                ]}
+                onPress={() => {
+                  onSelect(opt);
+                  setOpen(false);
+                }}
+              >
+                <Text style={styles.dropdownItemId}>{id}</Text>
+                {sub && <Text style={styles.dropdownItemSub}>{sub}</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+};
+
+// ── Field ────────────────────────────────────────────────────
 const Field = ({
   label,
   required,
@@ -84,6 +167,36 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
 
   const setField = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
 
+  // ── PO Autofill ──────────────────────────────────────────
+  const handlePOSelect = (po) => {
+    setForm((prev) => ({
+      ...prev,
+      linkedPO: po.id,
+      supplier: po.supplier,
+      receiptDate: po.receiptDate,
+      receivedBy: po.receivedBy,
+      location: po.location,
+    }));
+
+    setLines(
+      po.items.map((item, idx) => ({
+        id: Date.now() + idx,
+        item: item.item,
+        itemCode: "",
+        ndc: "",
+        category: "",
+        supplier: po.supplier,
+        unitCost: "",
+        uom: "",
+        poQty: item.poQty,
+        rcvQty: item.rcvQty,
+        condition: "",
+        lotNo: "",
+        expiry: "",
+      }))
+    );
+  };
+
   const addLine = () => {
     setLines((prev) => [
       ...prev,
@@ -117,24 +230,8 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
     );
   };
 
-  const filledLines = lines.filter((l) => l.item.trim());
-
-  const linesWithMissingRequired = lines.filter(
-    (line) => line.item && (!line.lotNo?.trim() || !line.expiry?.trim())
-  );
-
-  const isSubmitDisabled = () => {
-    return (
-      filledLines.length === 0 ||        // ← at least one item required
-      linesWithMissingRequired.length > 0 ||
-      !form.linkedPO ||
-      !form.location ||
-      !form.tsConfirmed
-    );
-  };
-
-  const calcTotal = () => {
-    return lines
+  const calcTotal = (linesToCalc) => {
+    return (linesToCalc || lines)
       .filter((l) => l.item)
       .reduce(
         (sum, l) =>
@@ -143,12 +240,33 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
       );
   };
 
+  // ── Submit ───────────────────────────────────────────────
   const handleSubmit = () => {
     setSubmitAttempted(true);
 
-    if (isSubmitDisabled()) {
+    // ✅ Always computed fresh from current state — no stale closure
+    const filledLines = lines.filter((l) => l.item?.trim());
+    const linesWithMissingRequired = filledLines.filter(
+      (l) => !l.lotNo?.trim() || !l.expiry?.trim()
+    );
+
+    console.log("📋 lines.length:", lines.length);
+    console.log("✅ filledLines.length:", filledLines.length);
+    console.log("📦 items:", filledLines.map((l) => l.item));
+    console.log("📍 location:", form.location);
+    console.log("🔗 linkedPO:", form.linkedPO);
+    console.log("☑ tsConfirmed:", form.tsConfirmed);
+
+    if (
+      filledLines.length === 0 ||
+      linesWithMissingRequired.length > 0 ||
+      !form.linkedPO ||
+      !form.location ||
+      !form.tsConfirmed
+    ) {
       let errorMsg = "Please fix the following:\n";
-      if (filledLines.length === 0) errorMsg += "• At least one item is required\n";  // ← new
+      if (filledLines.length === 0)
+        errorMsg += "• At least one item is required\n";
       if (!form.linkedPO) errorMsg += "• Linked PO is required\n";
       if (!form.location) errorMsg += "• Location is required\n";
       if (!form.tsConfirmed)
@@ -159,16 +277,30 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
       return;
     }
 
-    const totalValue = calcTotal();
+    const totalValue = calcTotal(filledLines);
 
     const newGRN = {
       grnNumber: form.grnNumber,
       supplier: form.supplier,
       receiptDate: form.receiptDate,
       location: form.location,
+      linkedPO: form.linkedPO,
       itemCount: filledLines.length,
-      totalValue: totalValue,
+      totalValue,
+      lineItems: filledLines.map((line) => ({
+        item: line.item,
+        poQty: line.poQty,
+        rcvQty: line.rcvQty,
+        lotNo: line.lotNo,
+        expiry: line.expiry,
+        unitCost: line.unitCost,
+        uom: line.uom,
+        condition: line.condition,
+      })),
     };
+
+    console.log("💾 Saving GRN with lineItems:", newGRN.lineItems.length);
+
     addGRN(newGRN);
 
     Alert.alert(
@@ -200,7 +332,6 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Scanned badge */}
           {scannedItem && (
             <View style={styles.scannedBadge}>
               <Text style={styles.scannedIcon}>✅</Text>
@@ -210,7 +341,6 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
             </View>
           )}
 
-          {/* Form Card */}
           <View style={styles.formCard}>
             <Field
               label="GRN Number"
@@ -219,22 +349,33 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
               onChangeText={(v) => setField("grnNumber", v)}
               placeholder="Enter GRN number (e.g., GRN-2024-001)"
             />
-            <Field
+
+            {/* ── PO Dropdown ── */}
+            <AppDropdown
               label="Linked PO"
               required
               icon="📦"
               value={form.linkedPO}
-              onChangeText={(v) => setField("linkedPO", v)}
-              placeholder="Enter PO number (e.g., PO-2024-001)"
+              onSelect={handlePOSelect}
+              options={PO_LIST}
+              placeholder="Select a PO number..."
+              zIndex={300}
             />
-            <Field
+
+            {/* ── Supplier ── */}
+            <AppDropdown
               label="Supplier"
               required
               icon="🏭"
               value={form.supplier}
-              onChangeText={(v) => setField("supplier", v)}
-              placeholder="Enter supplier name"
+              onSelect={(opt) =>
+                setField("supplier", typeof opt === "object" ? opt.id : opt)
+              }
+              options={SUPPLIER_LIST}
+              placeholder="Select supplier..."
+              zIndex={200}
             />
+
             <Field
               label="Receipt Date"
               required
@@ -257,16 +398,22 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
               onChangeText={(v) => setField("deliveryNote", v)}
               placeholder="e.g., DN-2026-0482"
             />
-            <Field
+
+            {/* ── Location ── */}
+            <AppDropdown
               label="Store To (Location)"
               required
               icon="📍"
               value={form.location}
-              onChangeText={(v) => setField("location", v)}
-              placeholder="Enter warehouse/location"
+              onSelect={(opt) =>
+                setField("location", typeof opt === "object" ? opt.id : opt)
+              }
+              options={LOCATION_LIST}
+              placeholder="Select location..."
+              zIndex={100}
             />
 
-            {/* Items Section */}
+            {/* ── Items Section ── */}
             <View style={styles.itemsSection}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>📦 Items Received</Text>
@@ -275,10 +422,12 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
                 </TouchableOpacity>
               </View>
 
-              {/* ← show error under section header if no items filled */}
-              {submitAttempted && filledLines.length === 0 && (
-                <Text style={styles.errorText}>At least one item is required</Text>
-              )}
+              {submitAttempted &&
+                lines.filter((l) => l.item?.trim()).length === 0 && (
+                  <Text style={styles.errorText}>
+                    At least one item is required
+                  </Text>
+                )}
 
               {lines.map((line, idx) => {
                 const missingLot =
@@ -358,7 +507,9 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
                           label="Unit Cost"
                           icon="💰"
                           value={line.unitCost}
-                          onChangeText={(v) => updateLine(line.id, "unitCost", v)}
+                          onChangeText={(v) =>
+                            updateLine(line.id, "unitCost", v)
+                          }
                           placeholder="$0.00"
                           keyboardType="numeric"
                         />
@@ -395,17 +546,18 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
               })}
             </View>
 
-            {/* Total Value */}
             <View style={styles.totalContainer}>
               <Text style={styles.totalLabel}>Total Received Value:</Text>
               <Text style={styles.totalValue}>
-                ${calcTotal().toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                $
+                {calcTotal().toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                })}
               </Text>
             </View>
 
             <View style={styles.divider} />
 
-           
             <Field
               label="Remarks / Discrepancy Notes"
               icon="💬"
@@ -416,7 +568,6 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
               numberOfLines={3}
             />
 
-            {/* DSCSA Section */}
             <View style={styles.dscsaSection}>
               <Text style={styles.dscsaTitle}>
                 🔒 DSCSA Transaction Information
@@ -466,16 +617,26 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
               </View>
             </View>
 
-            {submitAttempted && linesWithMissingRequired.length > 0 && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorBoxTitle}>
-                  Please fix the following:
-                </Text>
-                <Text style={styles.errorBoxText}>
-                  • {linesWithMissingRequired.length} item(s) missing Lot # or Expiry
-                </Text>
-              </View>
-            )}
+            {submitAttempted &&
+              lines.filter(
+                (l) => l.item && (!l.lotNo?.trim() || !l.expiry?.trim())
+              ).length > 0 && (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorBoxTitle}>
+                    Please fix the following:
+                  </Text>
+                  <Text style={styles.errorBoxText}>
+                    •{" "}
+                    {
+                      lines.filter(
+                        (l) =>
+                          l.item && (!l.lotNo?.trim() || !l.expiry?.trim())
+                      ).length
+                    }{" "}
+                    item(s) missing Lot # or Expiry
+                  </Text>
+                </View>
+              )}
           </View>
 
           <TouchableOpacity
@@ -507,6 +668,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  backBtn: { padding: 4 },
   backText: { color: "#fff", fontSize: 24, fontWeight: "600" },
   headerTitle: {
     color: "#fff",
@@ -524,10 +686,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#9ae6b4",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
     elevation: 2,
   },
   scannedIcon: { fontSize: 18, marginRight: 8 },
@@ -542,8 +700,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
+    overflow: "visible",
   },
-  fieldContainer: { marginBottom: 16 },
+  fieldContainer: { marginBottom: 16, zIndex: 1 },
   label: {
     fontSize: 13,
     fontWeight: "700",
@@ -653,10 +812,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
-    shadowColor: "#10b981",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 6,
   },
   submitText: {
@@ -665,4 +820,50 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.5,
   },
+  floatList: {
+    position: "absolute",
+    top: 72,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
+  dropdownTrigger: {
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dropdownValue: { fontSize: 15, color: "#2d3748", flex: 1 },
+  dropdownPlaceholder: { fontSize: 15, color: "#a0aec0", flex: 1 },
+  dropdownArrow: { fontSize: 12, color: "#718096", marginLeft: 8 },
+  dropdownList: {
+    marginTop: 4,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    overflow: "hidden",
+    elevation: 4,
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f4f8",
+  },
+  dropdownItemActive: { backgroundColor: "#ebf8ff" },
+  dropdownItemId: { fontSize: 14, fontWeight: "700", color: "#1a202c" },
+  dropdownItemSub: { fontSize: 12, color: "#718096", marginTop: 2 },
 });
