@@ -193,7 +193,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
         condition: "",
         lotNo: "",
         expiry: "",
-      }))
+      })),
     );
   };
 
@@ -226,7 +226,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
 
   const updateLine = (id, key, val) => {
     setLines((prev) =>
-      prev.map((line) => (line.id === id ? { ...line, [key]: val } : line))
+      prev.map((line) => (line.id === id ? { ...line, [key]: val } : line)),
     );
   };
 
@@ -236,7 +236,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
       .reduce(
         (sum, l) =>
           sum + (parseFloat(l.rcvQty) || 0) * (parseFloat(l.unitCost) || 0),
-        0
+        0,
       );
   };
 
@@ -247,12 +247,15 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
     // ✅ Always computed fresh from current state — no stale closure
     const filledLines = lines.filter((l) => l.item?.trim());
     const linesWithMissingRequired = filledLines.filter(
-      (l) => !l.lotNo?.trim() || !l.expiry?.trim()
+      (l) => !l.lotNo?.trim() || !l.expiry?.trim() || !l.unitCost?.trim(),
     );
 
     console.log("📋 lines.length:", lines.length);
     console.log("✅ filledLines.length:", filledLines.length);
-    console.log("📦 items:", filledLines.map((l) => l.item));
+    console.log(
+      "📦 items:",
+      filledLines.map((l) => l.item),
+    );
     console.log("📍 location:", form.location);
     console.log("🔗 linkedPO:", form.linkedPO);
     console.log("☑ tsConfirmed:", form.tsConfirmed);
@@ -272,7 +275,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
       if (!form.tsConfirmed)
         errorMsg += "• Transaction Statement must be confirmed\n";
       if (linesWithMissingRequired.length > 0)
-        errorMsg += `• ${linesWithMissingRequired.length} item(s) missing Lot # or Expiry\n`;
+        errorMsg += `• ${linesWithMissingRequired.length} item(s) missing Lot #, Expiry, or Unit Cost\n`;
       Alert.alert("Missing Information", errorMsg);
       return;
     }
@@ -306,7 +309,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
     Alert.alert(
       "GRN Created",
       `GRN ${form.grnNumber || "N/A"}\nSupplier: ${form.supplier}\nLocation: ${form.location}\nItems: ${filledLines.length}\nTotal Value: $${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-      [{ text: "OK", onPress: () => navigation.navigate("GRNDashboard") }]
+      [{ text: "OK", onPress: () => navigation.navigate("GRNDashboard") }],
     );
   };
 
@@ -505,6 +508,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
                       <View style={styles.rowHalf}>
                         <Field
                           label="Unit Cost"
+                          required
                           icon="💰"
                           value={line.unitCost}
                           onChangeText={(v) =>
@@ -513,6 +517,13 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
                           placeholder="$0.00"
                           keyboardType="numeric"
                         />
+                        {submitAttempted &&
+                          line.item &&
+                          !line.unitCost?.trim() && (
+                            <Text style={styles.errorText}>
+                              Unit Cost required
+                            </Text>
+                          )}
                       </View>
                       <View style={styles.rowHalf}>
                         <Field
@@ -619,7 +630,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
 
             {submitAttempted &&
               lines.filter(
-                (l) => l.item && (!l.lotNo?.trim() || !l.expiry?.trim())
+                (l) => l.item && (!l.lotNo?.trim() || !l.expiry?.trim()),
               ).length > 0 && (
                 <View style={styles.errorBox}>
                   <Text style={styles.errorBoxTitle}>
@@ -630,7 +641,7 @@ export function CreateGRNScreen({ navigation, route, addGRN }) {
                     {
                       lines.filter(
                         (l) =>
-                          l.item && (!l.lotNo?.trim() || !l.expiry?.trim())
+                          l.item && (!l.lotNo?.trim() || !l.expiry?.trim()),
                       ).length
                     }{" "}
                     item(s) missing Lot # or Expiry
