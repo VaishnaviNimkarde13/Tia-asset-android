@@ -213,7 +213,7 @@ export function ItemListScreen({ onMarkConsumed, consumedItems = [] }) {
         item={selected}
         visible={modalOpen}
         onClose={closeModal}
-        onMarkConsumed={handleMarkConsumed}
+        onMarkConsumed={handleMarkConsumed}v
         alreadyConsumed={selected ? consumedCodes.has(selected.code) : false}
       />
     </View>
@@ -226,7 +226,7 @@ const screen = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 6,
   },
-  searchBox: {
+  searchBox: {     
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
